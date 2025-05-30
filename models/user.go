@@ -2,6 +2,8 @@ package models
 
 import (
     "gorm.io/gorm"
+	"time"
+
 )
 
 type User struct {
@@ -13,4 +15,11 @@ type User struct {
     FitnessGoals    string
     MFAEnabled      bool
     MFACode         string
+	ResetToken     string
+	ResetTokenExp  time.Time
+	ProfilePicture string `json:"profile_picture"`
+	Disabled bool `gorm:"default:false"`
+
+
 }
+    

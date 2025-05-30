@@ -17,17 +17,19 @@ func RegisterUser(email, password, fullName string) error {
         Email:    email,
         Password: hashedPassword,
         FullName: fullName,
+        Disabled: false, 
     }
 
     result := config.DB.Create(&user)
     return result.Error
 }
 
+
 func AuthenticateUser(email, password string) (string, error) {
     var user models.User
-    result := config.DB.Where("email = ?", email).First(&user)
+    result := config.DB.Where("email = ? AND disabled = ?", email, false).First(&user)
     if result.Error != nil {
-        return "", errors.New("user not found")
+        return "", errors.New("user not found or disabled")
     }
 
     if !utils.CheckPasswordHash(password, user.Password) {
@@ -41,3 +43,4 @@ func AuthenticateUser(email, password string) (string, error) {
 
     return token, nil
 }
+

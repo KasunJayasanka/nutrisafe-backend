@@ -15,6 +15,10 @@ func SetupRouter() *gin.Engine {
     {
         auth.POST("/register", controllers.Register)
         auth.POST("/login", controllers.Login)
+		auth.POST("/verify-mfa", controllers.VerifyMFA)
+		auth.POST("/forgot-password", controllers.ForgotPassword) 
+		auth.POST("/reset-password", controllers.ResetPassword)  
+
     }
 
     // Protected user routes
@@ -22,7 +26,9 @@ func SetupRouter() *gin.Engine {
     user.Use(middlewares.AuthMiddleware())
     {
         user.GET("/profile", controllers.GetProfile)
-        user.PUT("/profile", controllers.UpdateProfile)
+        user.PATCH("/profile", controllers.UpdateProfile)
+		user.PATCH("/mfa", controllers.ToggleMFA)
+
     }
 
     return r
