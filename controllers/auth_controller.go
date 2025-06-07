@@ -5,21 +5,19 @@ import (
 	"math/rand"
 	"net/http"
 	"time"
-	
-	
 
 	"backend/config"
+	"backend/models"
 	"backend/services"
 	"backend/utils"
-	"backend/models"
 
 	"github.com/gin-gonic/gin"
 )
 
 type RegisterInput struct {
-    Email    string `json:"email" binding:"required,email"`
-    Password string `json:"password" binding:"required"`
-    FullName string `json:"full_name" binding:"required"`
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
+	FullName string `json:"full_name" binding:"required"`
 }
 
 type VerifyInput struct {
@@ -28,24 +26,24 @@ type VerifyInput struct {
 }
 
 func Register(c *gin.Context) {
-    var input RegisterInput
-    if err := c.ShouldBindJSON(&input); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-        return
-    }
+	var input RegisterInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
-    err := services.RegisterUser(input.Email, input.Password, input.FullName)
-    if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-        return
-    }
+	err := services.RegisterUser(input.Email, input.Password, input.FullName)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
-    c.JSON(http.StatusCreated, gin.H{"message": "registration successful"})
+	c.JSON(http.StatusCreated, gin.H{"message": "registration successful"})
 }
 
 type LoginInput struct {
-    Email    string `json:"email" binding:"required,email"`
-    Password string `json:"password" binding:"required"`
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
 }
 
 func Login(c *gin.Context) {
@@ -88,7 +86,6 @@ func Login(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"token": token})
 }
-
 
 func VerifyMFA(c *gin.Context) {
 	var input VerifyInput
@@ -140,8 +137,6 @@ func ForgotPassword(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Password reset code sent to your email"})
 }
 
-
-
 func ResetPassword(c *gin.Context) {
 	var input struct {
 		Token       string `json:"token"`
@@ -172,5 +167,3 @@ func ResetPassword(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Password has been reset"})
 }
-
-
