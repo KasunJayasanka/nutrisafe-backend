@@ -15,10 +15,12 @@ import (
 )
 
 type RegisterInput struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
-	FullName string `json:"full_name" binding:"required"`
+    Email     string `json:"email" binding:"required,email"`
+    Password  string `json:"password" binding:"required"`
+    FirstName string `json:"first_name" binding:"required"`
+    LastName  string `json:"last_name" binding:"required"`
 }
+
 
 type VerifyInput struct {
 	Email string `json:"email"`
@@ -32,7 +34,7 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	err := services.RegisterUser(input.Email, input.Password, input.FullName)
+	err := services.RegisterUser(input.Email, input.Password, input.FirstName, input.LastName)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -40,6 +42,7 @@ func Register(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{"message": "registration successful"})
 }
+
 
 type LoginInput struct {
 	Email    string `json:"email" binding:"required,email"`
@@ -84,7 +87,10 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"token": token})
+	c.JSON(http.StatusOK, gin.H{
+	"token":     token,
+	"onboarded": user.Onboarded,
+})
 }
 
 func VerifyMFA(c *gin.Context) {
@@ -109,7 +115,10 @@ func VerifyMFA(c *gin.Context) {
 	user.MFACode = ""
 	config.DB.Save(&user)
 
-	c.JSON(http.StatusOK, gin.H{"token": token})
+	c.JSON(http.StatusOK, gin.H{
+	"token":     token,
+	"onboarded": user.Onboarded,
+})
 }
 
 func ForgotPassword(c *gin.Context) {

@@ -28,7 +28,7 @@ func SetupRouter() *gin.Engine {
         user.GET("/profile", controllers.GetProfile)
         user.PATCH("/profile", controllers.UpdateProfile)
 		user.PATCH("/mfa", controllers.ToggleMFA)
-
+        user.PATCH("/onboarding", controllers.OnboardUser)
     }
 
     return r
