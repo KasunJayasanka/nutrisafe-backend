@@ -10,12 +10,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type ProfileInput struct {
-	HealthConditions string `json:"health_conditions"`
-	FitnessGoals     string `json:"fitness_goals"`
-	ProfilePicture   string `json:"profile_picture"` // base64
-}
 
+type ProfileInput struct {
+    FirstName        string  `json:"first_name"`
+    LastName         string  `json:"last_name"`
+    Birthday         string  `json:"birthday"` // sent as YYYY-MM-DD
+    Height           float64 `json:"height"`
+    Weight           float64 `json:"weight"`
+    HealthConditions string  `json:"health_conditions"`
+    FitnessGoals     string  `json:"fitness_goals"`
+    ProfilePicture   string  `json:"profile_picture"`
+    Onboarded        bool    `json:"onboarded"`
+}
 type OnboardingInput struct {
     Birthday         string   `json:"birthday" binding:"required,datetime=2006-01-02"`
     Height           float64  `json:"height" binding:"required"`

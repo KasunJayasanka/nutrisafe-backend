@@ -11,10 +11,15 @@ import (
 )
 
 type ProfileInput struct {
-	HealthConditions string `json:"health_conditions"`
-	FitnessGoals     string `json:"fitness_goals"`
-	ProfilePicture   string `json:"profile_picture"`
-	Onboarded        bool   `json:"onboarded"` // ← Add this
+    FirstName        string  `json:"first_name"`
+    LastName         string  `json:"last_name"`
+    Birthday         string  `json:"birthday"` // sent as YYYY-MM-DD
+    Height           float64 `json:"height"`
+    Weight           float64 `json:"weight"`
+    HealthConditions string  `json:"health_conditions"`
+    FitnessGoals     string  `json:"fitness_goals"`
+    ProfilePicture   string  `json:"profile_picture"`
+    Onboarded        bool    `json:"onboarded"`
 }
 
 func GetUserProfile(email string) (map[string]interface{}, error) {
@@ -50,32 +55,50 @@ func GetUserProfile(email string) (map[string]interface{}, error) {
 
 
 func UpdateUserProfile(email string, input ProfileInput) error {
-	var user models.User
-	result := config.DB.Where("email = ? AND disabled = ?", email, false).First(&user)
-	if result.Error != nil {
-		return errors.New("user not found or disabled")
-	}
+    var user models.User
+    result := config.DB.Where("email = ? AND disabled = ?", email, false).First(&user)
+    if result.Error != nil {
+        return errors.New("user not found or disabled")
+    }
 
-	if input.HealthConditions != "" {
-		user.HealthConditions = input.HealthConditions
-	}
-	if input.FitnessGoals != "" {
-		user.FitnessGoals = input.FitnessGoals
-	}
-	if input.ProfilePicture != "" {
-		url, err := utils.UploadBase64ImageToS3(input.ProfilePicture, user.Email)
-		if err != nil {
-			return fmt.Errorf("failed to upload image: %v", err)
-		}
-		user.ProfilePicture = url
-	}
+    if input.FirstName != "" {
+        user.FirstName = input.FirstName
+    }
+    if input.LastName != "" {
+        user.LastName = input.LastName
+    }
 
-	// Apply value from client
-	user.Onboarded = input.Onboarded
+    if input.Birthday != "" {
+        birthday, err := time.Parse("2006-01-02", input.Birthday)
+        if err == nil {
+            user.Birthday = birthday
+        }
+    }
 
-	return config.DB.Save(&user).Error
+    if input.Height > 0 {
+        user.Height = input.Height
+    }
+    if input.Weight > 0 {
+        user.Weight = input.Weight
+    }
+    if input.HealthConditions != "" {
+        user.HealthConditions = input.HealthConditions
+    }
+    if input.FitnessGoals != "" {
+        user.FitnessGoals = input.FitnessGoals
+    }
+    if input.ProfilePicture != "" {
+        url, err := utils.UploadBase64ImageToS3(input.ProfilePicture, user.Email)
+        if err != nil {
+            return fmt.Errorf("failed to upload image: %v", err)
+        }
+        user.ProfilePicture = url
+    }
+
+    user.Onboarded = input.Onboarded
+
+    return config.DB.Save(&user).Error
 }
-
 
 
 

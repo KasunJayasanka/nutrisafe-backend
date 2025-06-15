@@ -31,5 +31,7 @@ func SetupRouter() *gin.Engine {
         user.PATCH("/onboarding", controllers.OnboardUser)
     }
 
+    r.POST("/dev/upload-image", controllers.DevUploadImage)
+
     return r
 }

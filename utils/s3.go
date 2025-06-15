@@ -36,7 +36,7 @@ func InitS3() {
 
 
 func UploadBase64ImageToS3(base64Data, filenamePrefix string) (string, error) {
-	// Split base64 data
+	// Split base64 data ("data:<mime>;base64,<data>")
 	parts := strings.Split(base64Data, ",")
 	if len(parts) != 2 {
 		return "", fmt.Errorf("invalid base64 image")
@@ -44,23 +44,40 @@ func UploadBase64ImageToS3(base64Data, filenamePrefix string) (string, error) {
 	meta := parts[0]
 	data := parts[1]
 
-	// Detect content type and extension
-	mediaType := strings.Split(meta, ":")[1]
-	contentType := strings.Split(mediaType, ";")[0]
+	// Detect content type
+	mediaType := strings.SplitN(meta, ":", 2)[1]       // "image/jpeg;base64"
+	contentType := strings.SplitN(mediaType, ";", 2)[0] // "image/jpeg"
+
+	// Determine extension
 	exts, _ := mime.ExtensionsByType(contentType)
-	ext := ".jpg"
-	if len(exts) > 0 {
-		ext = exts[0]
+	var ext string
+	switch contentType {
+	case "image/jpeg", "image/jpg":
+		ext = ".jpg"
+	default:
+		if len(exts) > 0 {
+			ext = exts[0]
+		} else {
+			// fallback: use subtype
+			parts := strings.SplitN(contentType, "/", 2)
+			if len(parts) == 2 {
+				ext = "." + parts[1]
+			}
+		}
 	}
 
-	// Decode the image
+	// Decode the image bytes
 	imageData, err := base64.StdEncoding.DecodeString(data)
 	if err != nil {
 		return "", fmt.Errorf("failed to decode image: %v", err)
 	}
 
-	// Build a unique key
-	key := fmt.Sprintf("profile-pictures/%s-%d%s", filenamePrefix, time.Now().UnixNano(), ext)
+	// Build a unique S3 key
+	key := fmt.Sprintf("profile-pictures/%s-%d%s",
+		filenamePrefix,
+		time.Now().UnixNano(),
+		ext,
+	)
 
 	// Upload to S3
 	_, err = s3Client.PutObject(context.TODO(), &s3.PutObjectInput{
@@ -74,7 +91,7 @@ func UploadBase64ImageToS3(base64Data, filenamePrefix string) (string, error) {
 		return "", fmt.Errorf("failed to upload to S3: %v", err)
 	}
 
-	// Return CloudFront URL
+	// Return the public URL via CloudFront
 	cfURL := os.Getenv("CLOUDFRONT_URL")
 	return fmt.Sprintf("%s/%s", cfURL, key), nil
 }
