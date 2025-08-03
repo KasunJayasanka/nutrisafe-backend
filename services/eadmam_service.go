@@ -88,7 +88,7 @@ type nutritionResponse struct {
 func (s *EdamamService) AnalyzeFood(foodID, measureURI string, qty float64) (map[string]float64, error) {
     // Build request payload
     payload := map[string]interface{}{
-        "ingr": []map[string]interface{}{ {
+        "ingredients": []map[string]interface{}{ {
             "quantity":   qty,
             "measureURI": measureURI,
             "foodId":     foodID,

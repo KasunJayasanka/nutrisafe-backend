@@ -7,6 +7,11 @@ import (
     "github.com/gin-gonic/gin"
 )
 
+type recognizeRequest struct {
+    ImageBase64 string `json:"image_base64" binding:"required"`
+}
+
+
 // GET /food/search?q=apple
 func SearchFoods(c *gin.Context) {
 	eda := services.NewEdamamService()
@@ -26,11 +31,14 @@ func SearchFoods(c *gin.Context) {
 
 // POST /food/recognize  { "image_base64": "data:…"}
 func RecognizeFood(c *gin.Context) {
-    var req struct{ ImageBase64 string `json:"image_base64" binding:"required"` }
-    if err := c.ShouldBindJSON(&req); err != nil {
-        c.JSON(400, gin.H{"error": "invalid body"})
+    // 1️⃣ Bind the JSON
+    var body recognizeRequest
+    if err := c.ShouldBindJSON(&body); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
         return
     }
+
+    // 2️⃣ Initialize your services
     eda := services.NewEdamamService()
     rek, err := services.NewRekognitionService()
     if err != nil {
@@ -38,10 +46,14 @@ func RecognizeFood(c *gin.Context) {
         return
     }
     foodSvc := services.NewFoodService(eda, rek)
-    out, err := foodSvc.Recognize(req.ImageBase64)
+
+    // 3️⃣ Recognize
+    items, err := foodSvc.Recognize(body.ImageBase64)
     if err != nil {
-        c.JSON(500, gin.H{"error": err.Error()})
+        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
         return
     }
-    c.JSON(200, out)
+
+    // 4️⃣ Return the list of FoodItems
+    c.JSON(http.StatusOK, items)
 }

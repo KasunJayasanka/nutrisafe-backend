@@ -5,7 +5,7 @@ import "gorm.io/gorm"
 // A catalog entry from Edamam
 type FoodItem struct {
     gorm.Model
-    EdamamFoodID string `gorm:"uniqueIndex;not null"` // e.g. "food_bnbh4ycaqj9as0ahtjwyxbmz4eqx"
+    EdamamFoodID string `gorm:"type:varchar(255);uniqueIndex;not null"`
     Label        string `gorm:"not null"`
     Category     string
     // Optionally store thumbnail or metadata…

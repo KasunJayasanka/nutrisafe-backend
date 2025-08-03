@@ -32,12 +32,17 @@ func SetupRouter() *gin.Engine {
 
         user.POST("/meals", controllers.LogMeal)
         user.GET("/meals", controllers.ListMeals)
+		user.PATCH("/meals/:id", controllers.UpdateMeal)
+        user.DELETE("/meals/:id", controllers.DeleteMeal)
         user.GET("/recommendations", controllers.GetRecommendations)
+		user.GET("/meals/:id", controllers.GetMealByID)
+
 
 	}
 
 	r.GET("/food/search", controllers.SearchFoods)
 	r.POST("/food/recognize", controllers.RecognizeFood)
+
 
 	r.POST("/dev/upload-image", controllers.DevUploadImage)
 

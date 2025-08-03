@@ -14,6 +14,12 @@ import (
 func AssessFoodSafety(foodName string, nutrients map[string]float64) []string {
 	warnings := []string{}
 
+	// ─── LLM‐based allergen/preservative check ────────────────
+	llmWarns, err := llmSafetyCheck(foodName)
+	if err == nil && len(llmWarns) > 0 {
+		warnings = append(warnings, llmWarns...)
+	}
+
 	// ─── Rule‐based checks ─────────────────────────────────
 	kcal   := nutrients["ENERC_KCAL"] // calories
 	sugar  := nutrients["SUGAR"]      // grams
@@ -33,11 +39,7 @@ func AssessFoodSafety(foodName string, nutrients map[string]float64) []string {
 			"High sodium (>2300mg).")
 	}
 
-	// ─── LLM‐based allergen/preservative check ────────────────
-	llmWarns, err := llmSafetyCheck(foodName)
-	if err == nil && len(llmWarns) > 0 {
-		warnings = append(warnings, llmWarns...)
-	}
+	
 
 	return warnings
 }

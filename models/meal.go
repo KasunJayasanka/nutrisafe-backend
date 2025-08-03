@@ -18,7 +18,11 @@ type Meal struct {
 // Each MealItem stores the nutrition snapshot & safety flag
 type MealItem struct {
     gorm.Model
-    MealID        uint            // FK → meals.id
+    MealID     uint
+    Meal       Meal
+
+    FoodID     string    `gorm:"type:varchar(255);not null"`
+    // Food       FoodItem  `gorm:"foreignKey:FoodID;references:EdamamFoodID"`
     FoodLabel     string          // human label
     Quantity      float64         // e.g. 200
     MeasureURI    string          // e.g. “http://www.edamam.com/ontologies/edamam.owl#Measure_gram”

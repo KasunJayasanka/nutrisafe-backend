@@ -19,7 +19,7 @@ type RekognitionService struct {
 
 func NewRekognitionService() (*RekognitionService, error) {
     cfg, err := config.LoadDefaultConfig(context.TODO(),
-        config.WithRegion(os.Getenv("AWS_REGION")))
+        config.WithRegion(os.Getenv("AWS_REGION_REKOG")))
     if err != nil {
         return nil, err
     }

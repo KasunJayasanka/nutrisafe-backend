@@ -1,3 +1,4 @@
+// services/meal_service.go
 package services
 
 import (
@@ -16,10 +17,32 @@ func NewMealService(fs *FoodService) *MealService {
 	return &MealService{foodSvc: fs}
 }
 
+// exactly your existing request type
 type MealItemRequest struct {
 	FoodID     string  `json:"food_id"`     // EdamamFoodID
 	MeasureURI string  `json:"measure_uri"` // Edamam measure URI
 	Quantity   float64 `json:"quantity"`
+}
+
+// lookupLabel will call your FoodService.SearchFoods(q)
+// and try to match the returned EdamamFoodID back to the
+// one we passed in.  If we find it, return its Label.
+// Otherwise fall back to the raw ID.
+func (s *MealService) lookupLabel(foodID string) string {
+	// SearchFoods should already exist in your food_service.go
+	foods, err := s.foodSvc.Search(foodID)
+	if err != nil {
+		return foodID
+	}
+	for _, f := range foods {
+		if f.EdamamFoodID == foodID {
+			return f.Label
+		}
+	}
+	if len(foods) > 0 {
+		return foods[0].Label
+	}
+	return foodID
 }
 
 func (s *MealService) AddMeal(
@@ -28,20 +51,28 @@ func (s *MealService) AddMeal(
 	ateAt time.Time,
 	items []MealItemRequest,
 ) (*models.Meal, error) {
+	// create the parent meal
 	meal := &models.Meal{UserID: userID, Type: mealType, AteAt: ateAt}
 	if err := config.DB.Create(meal).Error; err != nil {
 		return nil, err
 	}
 
+	// for each requested item, Analyze nutrition, then lookup the Label
 	for _, it := range items {
 		nut, err := s.foodSvc.Analyze(it.FoodID, it.MeasureURI, it.Quantity)
 		if err != nil {
 			return nil, err
 		}
 		warnings := utils.AssessFoodSafety(it.FoodID, nut)
+
+		// here’s the only change: instead of using it.FoodID as the label,
+		// we do a quick search and pull out the human name
+		label := s.lookupLabel(it.FoodID)
+
 		mi := &models.MealItem{
 			MealID:     meal.ID,
-			FoodLabel:  it.FoodID,
+			FoodID:     it.FoodID,
+			FoodLabel:  label,               // ← human name now
 			Quantity:   it.Quantity,
 			MeasureURI: it.MeasureURI,
 			Calories:   nut["ENERC_KCAL"],
@@ -53,9 +84,18 @@ func (s *MealService) AddMeal(
 			Safe:       len(warnings) == 0,
 			Warnings:   strings.Join(warnings, "; "),
 		}
-		config.DB.Create(mi)
+		if err := config.DB.Create(mi).Error; err != nil {
+			return nil, err
+		}
 	}
-	return meal, nil
+
+	// reload with items
+	var populatedMeal models.Meal
+	if err := config.DB.Preload("Items").
+		First(&populatedMeal, meal.ID).Error; err != nil {
+		return nil, err
+	}
+	return &populatedMeal, nil
 }
 
 func (s *MealService) ListMeals(userID uint) ([]models.Meal, error) {
@@ -66,4 +106,92 @@ func (s *MealService) ListMeals(userID uint) ([]models.Meal, error) {
 		Order("ate_at DESC").
 		Find(&meals).Error
 	return meals, err
+}
+
+func (s *MealService) UpdateMeal(
+	userID, mealID uint,
+	mealType string,
+	ateAt time.Time,
+	items []MealItemRequest,
+) (*models.Meal, error) {
+	// fetch & update the parent meal
+	var meal models.Meal
+	if err := config.DB.
+		Where("id = ? AND user_id = ?", mealID, userID).
+		First(&meal).Error; err != nil {
+		return nil, err
+	}
+	meal.Type = mealType
+	meal.AteAt = ateAt
+	if err := config.DB.Save(&meal).Error; err != nil {
+		return nil, err
+	}
+
+	// delete old items
+	if err := config.DB.
+		Where("meal_id = ?", meal.ID).
+		Delete(&models.MealItem{}).Error; err != nil {
+		return nil, err
+	}
+
+	// re-create new items, again using lookupLabel
+	for _, it := range items {
+		nut, err := s.foodSvc.Analyze(it.FoodID, it.MeasureURI, it.Quantity)
+		if err != nil {
+			return nil, err
+		}
+		warnings := utils.AssessFoodSafety(it.FoodID, nut)
+		label := s.lookupLabel(it.FoodID)
+
+		mi := &models.MealItem{
+			MealID:     meal.ID,
+			FoodID:     it.FoodID,
+			FoodLabel:  label,
+			Quantity:   it.Quantity,
+			MeasureURI: it.MeasureURI,
+			Calories:   nut["ENERC_KCAL"],
+			Protein:    nut["PROCNT"],
+			Carbs:      nut["CHOCDF"],
+			Fat:        nut["FAT"],
+			Sodium:     nut["NA"],
+			Sugar:      nut["SUGAR"],
+			Safe:       len(warnings) == 0,
+			Warnings:   strings.Join(warnings, "; "),
+		}
+		if err := config.DB.Create(mi).Error; err != nil {
+			return nil, err
+		}
+	}
+
+	// reload
+	var updated models.Meal
+	if err := config.DB.
+		Preload("Items").
+		First(&updated, meal.ID).Error; err != nil {
+		return nil, err
+	}
+	return &updated, nil
+}
+
+func (s *MealService) DeleteMeal(userID, mealID uint) error {
+	if err := config.DB.
+		Where("meal_id = ?", mealID).
+		Delete(&models.MealItem{}).Error; err != nil {
+		return err
+	}
+	return config.DB.
+		Where("id = ? AND user_id = ?", mealID, userID).
+		Delete(&models.Meal{}).Error
+}
+
+func (s *MealService) GetMeal(userID, mealID uint) (*models.Meal, error) {
+	var meal models.Meal
+	err := config.DB.
+		Preload("Items").
+		Where("id = ? AND user_id = ?", mealID, userID).
+		First(&meal).Error
+	if err != nil {
+		return nil, err  // could be ErrRecordNotFound
+	}
+	return &meal, nil
 }
