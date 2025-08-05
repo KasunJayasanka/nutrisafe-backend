@@ -59,7 +59,7 @@ func (s *EdamamService) SearchFoods(query string) ([]models.FoodItem, error) {
         return nil, fmt.Errorf("failed to read Edamam parser response: %w", err)
     }
     if resp.StatusCode != http.StatusOK {
-        return nil, fmt.Errorf("Edamam parser API error %d: %s", resp.StatusCode, string(body))
+        return nil, fmt.Errorf("edamam parser API error %d: %s", resp.StatusCode, string(body))
     }
 
     var pr foodParserResponse
@@ -121,7 +121,7 @@ func (s *EdamamService) AnalyzeFood(foodID, measureURI string, qty float64) (map
         return nil, fmt.Errorf("failed to read nutrition response: %w", err)
     }
     if resp.StatusCode != http.StatusOK {
-        return nil, fmt.Errorf("Edamam nutrition API error %d: %s", resp.StatusCode, string(body))
+        return nil, fmt.Errorf("edamam nutrition API error %d: %s", resp.StatusCode, string(body))
     }
 
     var nr nutritionResponse
