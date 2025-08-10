@@ -180,3 +180,80 @@ func GetMealByID(c *gin.Context) {
 	// 5) return it
 	c.JSON(200, meal)
 }
+
+func ListRecentMeals(c *gin.Context) {
+	limit := 3
+	if v := c.Query("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			if n < 1 {
+				n = 1
+			}
+			if n > 20 {
+				n = 20
+			}
+			limit = n
+		}
+	}
+
+	email := c.GetString("email")
+	var u models.User
+	if err := config.DB.First(&u, "email = ?", email).Error; err != nil {
+		c.JSON(401, gin.H{"error": "user not found"})
+		return
+	}
+
+	eda := services.NewEdamamService()
+	rek, err := services.NewRekognitionService()
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	mealSvc := services.NewMealService(services.NewFoodService(eda, rek))
+
+	meals, err := mealSvc.ListRecentMeals(u.ID, limit)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"limit": limit, "meals": meals})
+}
+
+func ListRecentMealItems(c *gin.Context) {
+	limit := 3
+	if v := c.Query("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			if n < 1 {
+				n = 1
+			}
+			if n > 20 {
+				n = 20
+			}
+			limit = n
+		}
+	}
+
+	email := c.GetString("email")
+	var u models.User
+	if err := config.DB.First(&u, "email = ?", email).Error; err != nil {
+		c.JSON(401, gin.H{"error": "user not found"})
+		return
+	}
+
+	eda := services.NewEdamamService()
+	rek, err := services.NewRekognitionService()
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	mealSvc := services.NewMealService(services.NewFoodService(eda, rek))
+
+	items, err := mealSvc.ListRecentMealItems(u.ID, limit)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"limit": limit, "items": items})
+}
+

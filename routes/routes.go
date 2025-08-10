@@ -36,6 +36,8 @@ func SetupRouter() *gin.Engine {
         user.DELETE("/meals/:id", controllers.DeleteMeal)
         user.GET("/recommendations", controllers.GetRecommendations)
 		user.GET("/meals/:id", controllers.GetMealByID)
+		user.GET("/meals/recent", controllers.ListRecentMeals)          
+		user.GET("/meal-items/recent", controllers.ListRecentMealItems)
 
 		user.GET("/goals", controllers.GetGoals)
 		user.PATCH("/goals", controllers.UpdateGoals)
@@ -43,6 +45,7 @@ func SetupRouter() *gin.Engine {
 		user.POST("/daily-activity", controllers.UpdateDailyActivity)
 		user.GET("/daily-progress", controllers.GetDailyProgressHistory)
 		user.GET("/goals-by-date", controllers.GetGoalsByDate)
+		user.GET("/nutrient-breakdown-by-date", controllers.GetNutrientBreakdownByDate)
 
 	}
 

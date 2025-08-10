@@ -205,3 +205,44 @@ func (s *MealService) ListMealsByDateRange(userID uint, from, to time.Time) ([]m
         Find(&meals).Error
     return meals, err
 }
+
+func (s *MealService) ListRecentMeals(userID uint, limit int) ([]models.Meal, error) {
+	if limit <= 0 {
+		limit = 3
+	}
+	var meals []models.Meal
+	q := config.DB.
+		Preload("Items").
+		Where("user_id = ?", userID).
+		Order("ate_at DESC").
+		Limit(limit)
+
+	err := q.Find(&meals).Error
+	return meals, err
+}
+
+// “Recent meal items” (flat list) – handy for a simple card UI
+type RecentMealItem struct {
+	ID        uint      `json:"id"`
+	MealID    uint      `json:"meal_id"`
+	FoodLabel string    `json:"food_label"`
+	Calories  float64   `json:"calories"`
+	Safe      bool      `json:"safe"`
+	AteAt     time.Time `json:"ate_at"`
+}
+
+func (s *MealService) ListRecentMealItems(userID uint, limit int) ([]RecentMealItem, error) {
+	if limit <= 0 {
+		limit = 3
+	}
+	var rows []RecentMealItem
+	err := config.DB.
+		Table("meal_items").
+		Select("meal_items.id, meal_items.meal_id, meal_items.food_label, meal_items.calories, meal_items.safe, meals.ate_at").
+		Joins("JOIN meals ON meals.id = meal_items.meal_id").
+		Where("meals.user_id = ?", userID).
+		Order("meals.ate_at DESC, meal_items.created_at DESC").
+		Limit(limit).
+		Scan(&rows).Error
+	return rows, err
+}
