@@ -195,3 +195,13 @@ func (s *MealService) GetMeal(userID, mealID uint) (*models.Meal, error) {
 	}
 	return &meal, nil
 }
+
+func (s *MealService) ListMealsByDateRange(userID uint, from, to time.Time) ([]models.Meal, error) {
+    var meals []models.Meal
+    err := config.DB.
+        Preload("Items").
+        Where("user_id = ? AND ate_at >= ? AND ate_at < ?", userID, from, to).
+        Order("ate_at DESC").
+        Find(&meals).Error
+    return meals, err
+}
