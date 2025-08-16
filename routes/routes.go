@@ -30,14 +30,17 @@ func SetupRouter() *gin.Engine {
 		user.PATCH("/mfa", controllers.ToggleMFA)
 		user.PATCH("/onboarding", controllers.OnboardUser)
 
-        user.POST("/meals", controllers.LogMeal)
-        user.GET("/meals", controllers.ListMeals)
+		user.POST("/meals", controllers.LogMeal)
+		user.GET("/meals", controllers.ListMeals)
 		user.PATCH("/meals/:id", controllers.UpdateMeal)
-        user.DELETE("/meals/:id", controllers.DeleteMeal)
-        user.GET("/recommendations", controllers.GetRecommendations)
+		user.DELETE("/meals/:id", controllers.DeleteMeal)
+		user.GET("/recommendations", controllers.GetRecommendations)
 		user.GET("/meals/:id", controllers.GetMealByID)
-		user.GET("/meals/recent", controllers.ListRecentMeals)          
+		user.GET("/meals/recent", controllers.ListRecentMeals)
 		user.GET("/meal-items/recent", controllers.ListRecentMealItems)
+
+		user.GET("/meals/warnings", controllers.ListMealWarnings)
+		user.GET("/meals/:id/warnings", controllers.GetMealWarnings)
 
 		user.GET("/goals", controllers.GetGoals)
 		user.PATCH("/goals", controllers.UpdateGoals)
@@ -51,7 +54,6 @@ func SetupRouter() *gin.Engine {
 
 	r.GET("/food/search", controllers.SearchFoods)
 	r.POST("/food/recognize", controllers.RecognizeFood)
-
 
 	r.POST("/dev/upload-image", controllers.DevUploadImage)
 
