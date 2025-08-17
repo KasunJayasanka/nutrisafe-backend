@@ -127,3 +127,37 @@ func GetGoalsByDate(c *gin.Context) {
 		"progress": progress,
 	})
 }
+
+
+func GetNutrientBreakdownByDate(c *gin.Context) {
+	email := c.MustGet("email").(string)
+
+	var user models.User
+	if err := config.DB.Where("email = ?", email).First(&user).Error; err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
+		return
+	}
+
+	dateStr := c.Query("date")
+	if dateStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing 'date' query param"})
+		return
+	}
+
+	date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid date format. Use YYYY-MM-DD"})
+		return
+	}
+
+	breakdown, err := services.GetDailyNutrientBreakdownByDate(user.ID, date)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"date":      dateStr,
+		"breakdown": breakdown,
+	})
+}

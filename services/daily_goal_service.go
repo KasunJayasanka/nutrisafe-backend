@@ -10,6 +10,20 @@ import (
     "gorm.io/gorm"
 )
 
+
+type NutrientStat struct {
+	Consumed float64 `json:"consumed"`
+	Unit     string  `json:"unit"`
+	Goal     *float64 `json:"goal,omitempty"`
+	Percent  *float64 `json:"percent,omitempty"`
+}
+
+type DailyNutrientBreakdown struct {
+	Macros map[string]NutrientStat `json:"macros"`
+	Micros map[string]NutrientStat `json:"micros"`
+}
+
+
 func GetGoalsAndProgress(userID uint) (*models.DailyGoal, map[string]interface{}, error) {
     var goal models.DailyGoal
     err := config.DB.Where("user_id = ?", userID).First(&goal).Error
@@ -203,4 +217,90 @@ func GetGoalsAndProgressByDate(userID uint, date time.Time) (*models.DailyGoal, 
 	}
 
 	return &goal, progress, nil
+}
+
+func GetDailyNutrientBreakdownByDate(userID uint, date time.Time) (*DailyNutrientBreakdown, error) {
+	// fetch (optional) goals
+	var goal models.DailyGoal
+	if err := config.DB.Where("user_id = ?", userID).First(&goal).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
+	}
+
+	start := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.Local)
+	end := start.Add(24 * time.Hour)
+
+	eda := NewEdamamService()
+	rek, _ := NewRekognitionService()
+	food := NewFoodService(eda, rek)
+	meals := NewMealService(food)
+
+	list, err := meals.ListMealsByDateRange(userID, start, end)
+	if err != nil {
+		return nil, err
+	}
+
+	// sums
+	var cals, prot, carbs, fat float64
+	var sodium, sugar, fiber, chol, potassium float64
+	var vitA, vitC, calcium, iron float64
+
+	for _, m := range list {
+		for _, it := range m.Items {
+			cals += it.Calories
+			prot += it.Protein
+			carbs += it.Carbs
+			fat += it.Fat
+			sodium += it.Sodium
+			sugar += it.Sugar
+		}
+	}
+
+	pct := func(consumed float64, goal float64) *float64 {
+		if goal <= 0 {
+			return nil
+		}
+		v := consumed / goal
+		if v > 1 {
+			v = 1
+		}
+		return &v
+	}
+	withGoal := func(consumed float64, unit string, goalVal float64) NutrientStat {
+		g := goalVal
+		p := pct(consumed, goalVal)
+		return NutrientStat{
+			Consumed: consumed,
+			Unit:     unit,
+			Goal:     &g,
+			Percent:  p,
+		}
+	}
+	noGoal := func(consumed float64, unit string) NutrientStat {
+		return NutrientStat{
+			Consumed: consumed,
+			Unit:     unit,
+		}
+	}
+
+	resp := &DailyNutrientBreakdown{
+		Macros: map[string]NutrientStat{
+			"calories": withGoal(cals, "kcal", goal.Calories),
+			"protein":  withGoal(prot, "g",    goal.Protein),
+			"carbs":    withGoal(carbs, "g",   goal.Carbs),
+			"fat":      withGoal(fat, "g",     goal.Fat),
+		},
+		Micros: map[string]NutrientStat{
+			"sodium":      withGoal(sodium, "mg", goal.Sodium),
+			"sugar":       withGoal(sugar,  "g",  goal.Sugar),
+			"fiber":       noGoal(fiber, "g"),
+			"cholesterol": noGoal(chol, "mg"),
+			"potassium":   noGoal(potassium, "mg"),
+			"vitaminA":    noGoal(vitA, "µg RAE"),
+			"vitaminC":    noGoal(vitC, "mg"),
+			"calcium":     noGoal(calcium, "mg"),
+			"iron":        noGoal(iron, "mg"),
+		},
+	}
+
+	return resp, nil
 }
