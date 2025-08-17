@@ -3,11 +3,13 @@ package routes
 import (
 	"backend/controllers"
 	"backend/middlewares"
+	"backend/services"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
-func SetupRouter() *gin.Engine {
+func SetupRouter(db *gorm.DB) *gin.Engine {
 	r := gin.Default()
 
 	// Public auth routes
@@ -25,6 +27,9 @@ func SetupRouter() *gin.Engine {
 	user := r.Group("/user")
 	user.Use(middlewares.AuthMiddleware())
 	{
+		analyticsSvc := services.NewAnalyticsService(db)
+		analyticsCtl := controllers.NewAnalyticsController(analyticsSvc)
+		
 		user.GET("/profile", controllers.GetProfile)
 		user.PATCH("/profile", controllers.UpdateProfile)
 		user.PATCH("/mfa", controllers.ToggleMFA)
@@ -49,6 +54,9 @@ func SetupRouter() *gin.Engine {
 		user.GET("/daily-progress", controllers.GetDailyProgressHistory)
 		user.GET("/goals-by-date", controllers.GetGoalsByDate)
 		user.GET("/nutrient-breakdown-by-date", controllers.GetNutrientBreakdownByDate)
+
+		user.GET("/analytics/summary", analyticsCtl.GetAnalyticsSummary)
+		user.GET("/analytics/weekly-overview", analyticsCtl.GetWeeklyOverview)
 
 	}
 
