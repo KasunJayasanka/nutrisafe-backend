@@ -3,11 +3,13 @@ package routes
 import (
 	"backend/controllers"
 	"backend/middlewares"
+	"backend/services"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
-func SetupRouter() *gin.Engine {
+func SetupRouter(db *gorm.DB) *gin.Engine {
 	r := gin.Default()
 
 	// Public auth routes
@@ -25,30 +27,41 @@ func SetupRouter() *gin.Engine {
 	user := r.Group("/user")
 	user.Use(middlewares.AuthMiddleware())
 	{
+		analyticsSvc := services.NewAnalyticsService(db)
+		analyticsCtl := controllers.NewAnalyticsController(analyticsSvc)
+		
 		user.GET("/profile", controllers.GetProfile)
 		user.PATCH("/profile", controllers.UpdateProfile)
 		user.PATCH("/mfa", controllers.ToggleMFA)
 		user.PATCH("/onboarding", controllers.OnboardUser)
 
-        user.POST("/meals", controllers.LogMeal)
-        user.GET("/meals", controllers.ListMeals)
+		user.POST("/meals", controllers.LogMeal)
+		user.GET("/meals", controllers.ListMeals)
 		user.PATCH("/meals/:id", controllers.UpdateMeal)
-        user.DELETE("/meals/:id", controllers.DeleteMeal)
-        user.GET("/recommendations", controllers.GetRecommendations)
+		user.DELETE("/meals/:id", controllers.DeleteMeal)
+		user.GET("/recommendations", controllers.GetRecommendations)
 		user.GET("/meals/:id", controllers.GetMealByID)
+		user.GET("/meals/recent", controllers.ListRecentMeals)
+		user.GET("/meal-items/recent", controllers.ListRecentMealItems)
+
+		user.GET("/meals/warnings", controllers.ListMealWarnings)
+		user.GET("/meals/:id/warnings", controllers.GetMealWarnings)
 
 		user.GET("/goals", controllers.GetGoals)
 		user.PATCH("/goals", controllers.UpdateGoals)
 
-		user.POST("/daily-activity", controllers.UpdateDailyActivity)
+		user.PATCH("/daily-activity", controllers.UpdateDailyActivity)
 		user.GET("/daily-progress", controllers.GetDailyProgressHistory)
 		user.GET("/goals-by-date", controllers.GetGoalsByDate)
+		user.GET("/nutrient-breakdown-by-date", controllers.GetNutrientBreakdownByDate)
+
+		user.GET("/analytics/summary", analyticsCtl.GetAnalyticsSummary)
+		user.GET("/analytics/weekly-overview", analyticsCtl.GetWeeklyOverview)
 
 	}
 
 	r.GET("/food/search", controllers.SearchFoods)
 	r.POST("/food/recognize", controllers.RecognizeFood)
-
 
 	r.POST("/dev/upload-image", controllers.DevUploadImage)
 

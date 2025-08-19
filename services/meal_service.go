@@ -24,6 +24,22 @@ type MealItemRequest struct {
 	Quantity   float64 `json:"quantity"`
 }
 
+type ItemWarning struct {
+	MealItemID uint   `json:"meal_item_id"`
+	FoodLabel  string `json:"food_label"`
+	Safe       bool   `json:"safe"`
+	Warnings   string `json:"warnings"`
+	Calories   float64 `json:"calories,omitempty"` // optional extras
+}
+
+type MealWarnings struct {
+	MealID    uint          `json:"meal_id"`
+	Type      string        `json:"type"`
+	AteAt     time.Time     `json:"ate_at"`
+	MealSafe  bool          `json:"meal_safe"`         // true if no unsafe items
+	Warnings  []ItemWarning `json:"warnings_by_item"`  // only items that have warnings/unsafe
+}
+
 // lookupLabel will call your FoodService.SearchFoods(q)
 // and try to match the returned EdamamFoodID back to the
 // one we passed in.  If we find it, return its Label.
@@ -204,4 +220,126 @@ func (s *MealService) ListMealsByDateRange(userID uint, from, to time.Time) ([]m
         Order("ate_at DESC").
         Find(&meals).Error
     return meals, err
+}
+
+func (s *MealService) ListRecentMeals(userID uint, limit int) ([]models.Meal, error) {
+	if limit <= 0 {
+		limit = 3
+	}
+	var meals []models.Meal
+	q := config.DB.
+		Preload("Items").
+		Where("user_id = ?", userID).
+		Order("ate_at DESC").
+		Limit(limit)
+
+	err := q.Find(&meals).Error
+	return meals, err
+}
+
+// “Recent meal items” (flat list) – handy for a simple card UI
+type RecentMealItem struct {
+	ID        uint      `json:"id"`
+	MealID    uint      `json:"meal_id"`
+	FoodLabel string    `json:"food_label"`
+	Calories  float64   `json:"calories"`
+	Safe      bool      `json:"safe"`
+	AteAt     time.Time `json:"ate_at"`
+}
+
+func (s *MealService) ListRecentMealItems(userID uint, limit int) ([]RecentMealItem, error) {
+	if limit <= 0 {
+		limit = 3
+	}
+	var rows []RecentMealItem
+	err := config.DB.
+		Table("meal_items").
+		Select("meal_items.id, meal_items.meal_id, meal_items.food_label, meal_items.calories, meal_items.safe, meals.ate_at").
+		Joins("JOIN meals ON meals.id = meal_items.meal_id").
+		Where("meals.user_id = ?", userID).
+		Order("meals.ate_at DESC, meal_items.created_at DESC").
+		Limit(limit).
+		Scan(&rows).Error
+	return rows, err
+}
+
+
+
+func (s *MealService) ListMealsWithWarnings(userID uint, from, to *time.Time) ([]MealWarnings, error) {
+	var meals []models.Meal
+	q := config.DB.
+		Where("user_id = ?", userID).
+		// preload only items that are unsafe OR have non-empty warnings
+		Preload("Items", "safe = ? OR warnings <> ''", false).
+		Order("ate_at DESC")
+
+	if from != nil && to != nil {
+		q = q.Where("ate_at >= ? AND ate_at < ?", *from, *to)
+	}
+
+	if err := q.Find(&meals).Error; err != nil {
+		return nil, err
+	}
+
+	out := make([]MealWarnings, 0, len(meals))
+	for _, m := range meals {
+		mw := MealWarnings{
+			MealID:   m.ID,
+			Type:     m.Type,
+			AteAt:    m.AteAt,
+			MealSafe: true, // assume safe until we see an unsafe item
+		}
+
+		for _, it := range m.Items {
+			// (Preload already filtered, but double-check just in case)
+			if !it.Safe || strings.TrimSpace(it.Warnings) != "" {
+				mw.Warnings = append(mw.Warnings, ItemWarning{
+					MealItemID: it.ID,
+					FoodLabel:  it.FoodLabel,
+					Safe:       it.Safe,
+					Warnings:   it.Warnings,
+					Calories:   it.Calories,
+				})
+				if !it.Safe {
+					mw.MealSafe = false
+				}
+			}
+		}
+
+		out = append(out, mw)
+	}
+	return out, nil
+}
+
+// Optional: single-meal variant
+func (s *MealService) GetMealWarnings(userID, mealID uint) (*MealWarnings, error) {
+	var meal models.Meal
+	if err := config.DB.
+		Where("id = ? AND user_id = ?", mealID, userID).
+		Preload("Items", "safe = ? OR warnings <> ''", false).
+		First(&meal).Error; err != nil {
+		return nil, err
+	}
+
+	mw := MealWarnings{
+		MealID:   meal.ID,
+		Type:     meal.Type,
+		AteAt:    meal.AteAt,
+		MealSafe: true,
+	}
+	for _, it := range meal.Items {
+		if !it.Safe || strings.TrimSpace(it.Warnings) != "" {
+			mw.Warnings = append(mw.Warnings, ItemWarning{
+				MealItemID: it.ID,
+				FoodLabel:  it.FoodLabel,
+				Safe:       it.Safe,
+				Warnings:   it.Warnings,
+				Calories:   it.Calories,
+			})
+			if !it.Safe {
+				mw.MealSafe = false
+			}
+		}
+	}
+	return &mw, nil
 }
