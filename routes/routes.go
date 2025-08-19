@@ -50,7 +50,7 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 		user.GET("/goals", controllers.GetGoals)
 		user.PATCH("/goals", controllers.UpdateGoals)
 
-		user.POST("/daily-activity", controllers.UpdateDailyActivity)
+		user.PATCH("/daily-activity", controllers.UpdateDailyActivity)
 		user.GET("/daily-progress", controllers.GetDailyProgressHistory)
 		user.GET("/goals-by-date", controllers.GetGoalsByDate)
 		user.GET("/nutrient-breakdown-by-date", controllers.GetNutrientBreakdownByDate)
