@@ -5,6 +5,7 @@ import (
 	"backend/config"
 	"backend/models"
 	"backend/utils"
+	"fmt"
 	"strings"
 	"time"
 )
@@ -103,6 +104,11 @@ func (s *MealService) AddMeal(
 		if err := config.DB.Create(mi).Error; err != nil {
 			return nil, err
 		}
+
+		if len(warnings) > 0 {
+			msg := fmt.Sprintf("%s: %s — %s", mealType, label, strings.Join(warnings, "; "))
+			EmitAlert(userID, "warning", msg)
+		}
 	}
 
 	// reload with items
@@ -176,6 +182,10 @@ func (s *MealService) UpdateMeal(
 		}
 		if err := config.DB.Create(mi).Error; err != nil {
 			return nil, err
+		}
+		if len(warnings) > 0 {
+			msg := fmt.Sprintf("%s: %s — %s", mealType, label, strings.Join(warnings, "; "))
+			EmitAlert(userID, "warning", msg)
 		}
 	}
 

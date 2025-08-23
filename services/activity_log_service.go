@@ -1,55 +1,66 @@
 package services
 
 import (
-	"time"
 	"backend/config"
 	"backend/models"
+	"time"
+
+	"gorm.io/gorm"
 )
 
-func UpsertDailyActivity(userID uint, hydration, exercise float64) error {
-	date := time.Now().Truncate(24 * time.Hour)
+func dayStartLocal(t time.Time) time.Time {
+	loc := time.Local
+	tt := t.In(loc)
+	return time.Date(tt.Year(), tt.Month(), tt.Day(), 0, 0, 0, 0, loc)
+}
 
-	var log models.DailyActivityLog
-	err := config.DB.Where("user_id = ? AND date = ?", userID, date).First(&log).Error
-	if err != nil {
-		log = models.DailyActivityLog{
-			UserID:    userID,
-			Date:      date,
-			Hydration: hydration,
-			Exercise:  exercise,
-		}
-		return config.DB.Create(&log).Error
+func UpsertDailyActivity(userID uint, hydration, exercise float64) error {
+	start := dayStartLocal(time.Now())
+
+	log := models.DailyActivityLog{
+		UserID:    userID,
+		Date:      start,
+		Hydration: hydration,
+		Exercise:  exercise,
 	}
 
-	log.Hydration = hydration
-	log.Exercise = exercise
-	return config.DB.Save(&log).Error
+	// Upsert by (user_id, date @ local midnight)
+	return config.DB.
+		Where("user_id = ? AND date = ?", userID, start).
+		Assign(log).
+		FirstOrCreate(&log).Error
 }
 
 func GetDailyActivity(userID uint) (hydration, exercise float64, err error) {
-	date := time.Now().Truncate(24 * time.Hour)
+	start := dayStartLocal(time.Now())
+
 	var log models.DailyActivityLog
-	err = config.DB.Where("user_id = ? AND date = ?", userID, date).First(&log).Error
+	err = config.DB.
+		Where("user_id = ? AND date = ?", userID, start).
+		First(&log).Error
+
 	if err != nil {
-		return 0, 0, nil // treat as zero if not found
+		if err == gorm.ErrRecordNotFound {
+			return 0, 0, nil
+		}
+		return 0, 0, err
 	}
 	return log.Hydration, log.Exercise, nil
 }
 
-func GetDailyActivityByDate(userID uint, date time.Time) (hydration float64, exercise float64, err error) {
+func GetDailyActivityByDate(userID uint, date time.Time) (hydration, exercise float64, err error) {
+	start := dayStartLocal(date)
+
 	var log models.DailyActivityLog
-
-	start := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.Local)
-	end := start.Add(24 * time.Hour)
-
 	err = config.DB.
-		Where("user_id = ? AND date >= ? AND date < ?", userID, start, end).
+		Where("user_id = ? AND date = ?", userID, start).
 		First(&log).Error
 
 	if err != nil {
-		// If no record found, return 0s with nil error
-		return 0, 0, nil
+		if err == gorm.ErrRecordNotFound {
+			return 0, 0, nil
+		}
+		return 0, 0, err
 	}
-
 	return log.Hydration, log.Exercise, nil
 }

@@ -348,4 +348,3 @@ func GetMealWarnings(c *gin.Context) {
 
 	c.JSON(200, out)
 }
-

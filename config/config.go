@@ -41,6 +41,8 @@ func InitDB() {
 		&models.DailyGoal{},
 	    &models.DailyActivityLog{},
 		&models.DailyProgress{},
+		&models.Alert{},
+		&models.UserDevice{},
 	)
 	if err != nil {
 		log.Fatalf("AutoMigrate failed: %v", err)
