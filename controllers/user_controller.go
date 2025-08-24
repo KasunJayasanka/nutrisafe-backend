@@ -1,11 +1,11 @@
 package controllers
 
 import (
-	"net/http"
-	"time"
+	"backend/config"
 	"backend/services"
-	`backend/config`
-	
+	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -117,3 +117,35 @@ func OnboardUser(c *gin.Context) {
 }
 
 
+func GetBMI(c *gin.Context) {
+	email := c.GetString("email")
+
+	var (
+		overrideH *float64
+		overrideW *float64
+	)
+
+	if h := c.Query("height_cm"); h != "" {
+		if v, err := strconv.ParseFloat(h, 64); err == nil && v > 0 {
+			overrideH = &v
+		} else if h != "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid height_cm"})
+			return
+		}
+	}
+	if w := c.Query("weight_kg"); w != "" {
+		if v, err := strconv.ParseFloat(w, 64); err == nil && v > 0 {
+			overrideW = &v
+		} else if w != "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid weight_kg"})
+			return
+		}
+	}
+
+	result, err := services.GetUserBMI(email, overrideH, overrideW)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
