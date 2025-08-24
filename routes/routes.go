@@ -82,6 +82,8 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 
 	r.GET("/food/search", controllers.SearchFoods)
 	r.POST("/food/recognize", controllers.RecognizeFood)
+	r.POST("/food/analyze", controllers.AnalyzeFood)
+	r.GET("/food/:id/nutrition", controllers.GetFoodNutrition)
 
 	r.POST("/dev/upload-image", controllers.DevUploadImage)
 
