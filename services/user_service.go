@@ -204,3 +204,38 @@ func GetUserBMI(email string, overrideHeightCm, overrideWeightKg *float64) (*BMI
 		UsedOverride: usedOverride,
 	}, nil
 }
+
+func ChangePassword(email, current, next string) error {
+	var user models.User
+	if err := config.DB.
+		Where("email = ? AND disabled = ?", email, false).
+		First(&user).Error; err != nil {
+		return errors.New("user not found or disabled")
+	}
+
+	// Verify current password
+	if !utils.CheckPasswordHash(current, user.Password) {
+		return errors.New("current password is incorrect")
+	}
+
+	// Basic new password validation (extend as needed)
+	if len(next) < 8 {
+		return errors.New("new password must be at least 8 characters")
+	}
+	if next == current {
+		return errors.New("new password must be different from current password")
+	}
+
+	// Hash and save
+	hashed, err := utils.HashPassword(next)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	user.Password = hashed
+	// Clear any pending reset tokens if any
+	user.ResetToken = ""
+	user.ResetTokenExp = time.Time{}
+
+	return config.DB.Save(&user).Error
+}

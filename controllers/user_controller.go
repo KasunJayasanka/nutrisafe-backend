@@ -32,6 +32,11 @@ type OnboardingInput struct {
     MFAEnabled       bool     `json:"mfa_enabled"`
 }
 
+type changePasswordInput struct {
+	CurrentPassword string `json:"current_password" binding:"required"`
+	NewPassword     string `json:"new_password" binding:"required"`
+	ConfirmPassword string `json:"confirm_password"`
+}
 
 
 func GetProfile(c *gin.Context) {
@@ -148,4 +153,35 @@ func GetBMI(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, result)
+}
+
+
+func ChangePassword(c *gin.Context) {
+	email := c.GetString("email")
+
+	var in changePasswordInput
+	if err := c.ShouldBindJSON(&in); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if in.ConfirmPassword != "" && in.NewPassword != in.ConfirmPassword {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "new_password and confirm_password do not match"})
+		return
+	}
+
+	if err := services.ChangePassword(email, in.CurrentPassword, in.NewPassword); err != nil {
+		// Map common errors to friendly codes/messages
+		switch err.Error() {
+		case "user not found or disabled":
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		case "current password is incorrect":
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		default:
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "password updated successfully"})
 }

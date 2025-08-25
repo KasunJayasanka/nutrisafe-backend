@@ -43,6 +43,7 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 		user.PATCH("/profile", controllers.UpdateProfile)
 		user.PATCH("/mfa", controllers.ToggleMFA)
 		user.PATCH("/onboarding", controllers.OnboardUser)
+		user.PATCH("/profile/password", controllers.ChangePassword)
 		user.GET("/profile/bmi", controllers.GetBMI)
 
 		user.POST("/meals", controllers.LogMeal)
