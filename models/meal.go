@@ -19,7 +19,8 @@ type Meal struct {
 type MealItem struct {
     gorm.Model
     MealID     uint
-    Meal       Meal
+    Meal Meal `gorm:"foreignKey:MealID" json:"-"`
+
 
     FoodID     string    `gorm:"type:varchar(255);not null"`
     // Food       FoodItem  `gorm:"foreignKey:FoodID;references:EdamamFoodID"`
@@ -32,7 +33,6 @@ type MealItem struct {
     Fat           float64
     Sodium        float64
     Sugar         float64
-    // etc. add micro if desired
     Safe          bool            // safety assessment
     Warnings      string          // comma-sep warnings
 }

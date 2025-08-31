@@ -19,6 +19,6 @@ func main() {
     config.InitDB()
 	utils.InitS3() // ✅ initialize the S3 client
     utils.InitRekognition()
-    r := routes.SetupRouter()
+    r := routes.SetupRouter(config.DB)
     r.Run(":8080")
 }
