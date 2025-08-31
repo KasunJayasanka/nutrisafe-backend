@@ -22,6 +22,8 @@ type User struct {
     ProfilePicture   string    `json:"profile_picture"`
     MFAEnabled       bool
 
+    Sex              string    `json:"sex"`
+
     Onboarded        bool       `gorm:"default:false"`
     MFACode          string
     ResetToken       string

@@ -21,6 +21,7 @@ type ProfileInput struct {
     FitnessGoals     string  `json:"fitness_goals"`
     ProfilePicture   string  `json:"profile_picture"`
     Onboarded        bool    `json:"onboarded"`
+	Sex              string  `json:"sex"` 
 }
 type OnboardingInput struct {
     Birthday         string   `json:"birthday" binding:"required,datetime=2006-01-02"`
@@ -30,6 +31,7 @@ type OnboardingInput struct {
     FitnessGoals     []string `json:"fitness_goals"`
     ProfilePicture   string   `json:"profile_picture"`
     MFAEnabled       bool     `json:"mfa_enabled"`
+	Sex              string   `json:"sex"`
 }
 
 type changePasswordInput struct {
@@ -113,6 +115,7 @@ func OnboardUser(c *gin.Context) {
         input.FitnessGoals,
         input.ProfilePicture,
         input.MFAEnabled,
+		input.Sex,
     ); err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
         return

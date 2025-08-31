@@ -21,6 +21,7 @@ type ProfileInput struct {
     FitnessGoals     string  `json:"fitness_goals"`
     ProfilePicture   string  `json:"profile_picture"`
     Onboarded        bool    `json:"onboarded"`
+	Sex              string  `json:"sex"`
 }
 
 type BMIResult struct {
@@ -58,6 +59,7 @@ func GetUserProfile(email string) (map[string]interface{}, error) {
 		"profile_picture":   user.ProfilePicture,
 		"mfa_enabled":       user.MFAEnabled,
 		"onboarded":         user.Onboarded,
+		"sex":               user.Sex,
 	}, nil
 }
 
@@ -103,6 +105,9 @@ func UpdateUserProfile(email string, input ProfileInput) error {
         }
         user.ProfilePicture = url
     }
+	if input.Sex != "" {
+		user.Sex = input.Sex
+	}
 
     user.Onboarded = input.Onboarded
 
@@ -139,6 +144,7 @@ func CompleteUserOnboarding(
     healthConditions, fitnessGoals []string,
     profilePictureBase64 string,
     mfaEnabled bool,
+	sex string,
 ) error {
     var user models.User
     if err := config.DB.
@@ -161,6 +167,10 @@ func CompleteUserOnboarding(
             return fmt.Errorf("failed to upload profile picture: %w", err)
         }
         user.ProfilePicture = url
+    }
+
+	if sex != "" {
+        user.Sex = sex
     }
 
     user.Onboarded = true  // ← This line enables the flag
