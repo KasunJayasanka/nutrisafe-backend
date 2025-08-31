@@ -1,16 +1,15 @@
 package services
 
 import (
-    "bytes"
-    "encoding/json"
-    "fmt"
-    "io"
-    "net/http"
-    "net/url"
-    "os"
-    "time"
-
-    "backend/models"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"os"
+	"time"
+	"backend/models"
 )
 
 type EdamamService struct {
@@ -135,4 +134,88 @@ func (s *EdamamService) AnalyzeFood(foodID, measureURI string, qty float64) (map
         nut[k] = v.Quantity
     }
     return nut, nil
+}
+
+
+// Put near your other structs:
+type nutritionResponseFull struct {
+    Ingredients []struct {
+        Parsed []struct {
+            Food         string `json:"food"`                   // label string
+            FoodID       string `json:"foodId"`                 // edamam id
+            FoodURI      string `json:"foodURI,omitempty"`      // optional
+            FoodCategory string `json:"foodCategory,omitempty"` // optional
+        } `json:"parsed"`
+    } `json:"ingredients"`
+    TotalNutrients map[string]struct {
+        Quantity float64 `json:"quantity"`
+    } `json:"totalNutrients"`
+}
+
+// AnalyzeFoodWithInfo calls the same nutrients endpoint but also extracts
+// label/id/category (best-effort) from the response so you can show a preview.
+func (s *EdamamService) AnalyzeFoodWithInfo(foodID, measureURI string, qty float64) (map[string]float64, *models.FoodItem, error) {
+    // Build request payload
+    payload := map[string]interface{}{
+        "ingredients": []map[string]interface{}{
+            {
+                "quantity":   qty,
+                "measureURI": measureURI,
+                "foodId":     foodID,
+            },
+        },
+    }
+    b, err := json.Marshal(payload)
+    if err != nil {
+        return nil, nil, fmt.Errorf("failed to marshal nutrition payload: %w", err)
+    }
+
+    u := fmt.Sprintf(
+        "https://api.edamam.com/api/food-database/v2/nutrients?app_id=%s&app_key=%s",
+        s.nutriAppID, s.nutriAppKey,
+    )
+
+    req, err := http.NewRequest("POST", u, bytes.NewReader(b))
+    if err != nil {
+        return nil, nil, fmt.Errorf("failed to create nutrition request: %w", err)
+    }
+    req.Header.Set("Content-Type", "application/json")
+
+    resp, err := s.client.Do(req)
+    if err != nil {
+        return nil, nil, fmt.Errorf("failed to call Edamam nutrition API: %w", err)
+    }
+    defer resp.Body.Close()
+
+    body, err := io.ReadAll(resp.Body)
+    if err != nil {
+        return nil, nil, fmt.Errorf("failed to read nutrition response: %w", err)
+    }
+    if resp.StatusCode != http.StatusOK {
+        return nil, nil, fmt.Errorf("edamam nutrition API error %d: %s", resp.StatusCode, string(body))
+    }
+
+    var nr nutritionResponseFull
+    if err := json.Unmarshal(body, &nr); err != nil {
+        return nil, nil, fmt.Errorf("failed to parse nutrition JSON: %w", err)
+    }
+
+    // Flatten nutrients
+    nut := make(map[string]float64, len(nr.TotalNutrients))
+    for k, v := range nr.TotalNutrients {
+        nut[k] = v.Quantity
+    }
+
+    // Best-effort food info from the first parsed ingredient (if present)
+    var info *models.FoodItem
+    if len(nr.Ingredients) > 0 && len(nr.Ingredients[0].Parsed) > 0 {
+        p := nr.Ingredients[0].Parsed[0]
+        info = &models.FoodItem{
+            EdamamFoodID: p.FoodID,
+            Label:        p.Food,         // "food" is a label string here
+            Category:     p.FoodCategory, // may be empty
+        }
+    }
+
+    return nut, info, nil
 }
