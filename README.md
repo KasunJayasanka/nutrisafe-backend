@@ -41,9 +41,7 @@ The project is written in **Go** using a layered architecture (controllers → s
 
 ## 🖼️ Architecture Overview
 
-```markdown
 ![App Architecture](docs/architecture.png)
-````
 
 ---
 
@@ -125,8 +123,4 @@ go run cmd/main.go
 3. Commit changes (`git commit -m "feat: add new feature"`)
 4. Push branch (`git push origin feat/your-feature`)
 5. Open a Pull Request 🚀
-
-
-```
----
 
