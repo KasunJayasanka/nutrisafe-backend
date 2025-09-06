@@ -1,7 +1,6 @@
 
 ---
 
-```markdown
 # 🍽️ NutriSafe Backend (Golang)
 
 This is the backend for the Nutrivue application. It provides APIs for user authentication, meal and food management, user fitness goals tracking, activity logging, notifications, real-time updates, AI-powered food recognition,According to  Dietary Guidelines for American - DGA, rule based food safety assesments.  
